@@ -16,5 +16,5 @@ HOW TO RUN LOCALLY:
 5. Access the app at http://localhost:3000.
 
 DEPLOYMENT:
-Deployed on Render / Railway.
-Live URL: [Will be added after deployment]
+Deployed on Render.
+Live URL: https://taskflow-anmol.onrender.com
