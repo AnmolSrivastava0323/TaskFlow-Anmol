@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>TaskFlow — Project Management</title>
+  <meta name="description" content="Modern project management with task tracking and team collaboration.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { brand: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a' }, surface: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 700: '#334155', 800: '#1e293b', 900: '#0f172a', 950: '#020617' } } } } }</script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #020617;
+      color: #fff;
+      margin: 0;
+      overflow-x: hidden;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.01);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .glass-card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .glass-card:hover {
+      border-color: rgba(37, 99, 235, 0.4);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+    }
+
+    .sidebar-item-active {
+      background: linear-gradient(to right, rgba(37, 99, 235, 0.1), transparent);
+      border-left: 3px solid #2563eb;
+      color: #60a5fa !important;
+    }
+
+    .royal-glow {
+      text-shadow: 0 0 20px rgba(37, 99, 235, 0.5);
+    }
+
+    .royal-badge {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(255, 255, 255, 0.05));
+      border: 1px solid rgba(37, 99, 235, 0.3);
+      color: #60a5fa;
+    }
+
+    @keyframes float {
+      0% {
+        transform: translate(0, 0) rotate(0deg);
+      }
+
+      100% {
+        transform: translate(40px, 40px) rotate(5deg);
+      }
+    }
+
+    .blob {
+      position: absolute;
+      width: 700px;
+      height: 700px;
+      border-radius: 50%;
+      filter: blur(120px);
+      z-index: -1;
+      animation: float 30s infinite alternate;
+    }
+
+    .blob-1 {
+      top: -200px;
+      left: -200px;
+      background: radial-gradient(circle, rgba(37, 99, 235, 0.12), transparent);
+    }
+
+    .blob-2 {
+      bottom: -200px;
+      right: -200px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.05), transparent);
+    }
+
+    @keyframes royal-flow {
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    .royal-bg {
+      background: linear-gradient(-45deg, #020617, #0f172a, #1e3a8a, #020617);
+      background-size: 400% 400%;
+      animation: royal-flow 15s ease infinite;
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.02);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(59, 130, 246, 0.2);
+      border-radius: 3px;
+    }
+
+    .progress-bar {
+      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      background: linear-gradient(90deg, #2563eb, #ffffff);
+    }
+
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    select option {
+      background: #0f172a;
+      color: #fff;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root">
+    <div class="min-h-screen flex items-center justify-center bg-surface-950">
+      <div class="text-center">
+        <div class="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-4">
+        </div>
+        <p class="text-surface-400 animate-pulse">Initializing TaskFlow App...</p>
+        <p class="text-xs text-surface-600 mt-2">Compiling JSX (may take 5-10 seconds)...</p>
+      </div>
+    </div>
+  </div>
+  <script>
+    const STORAGE_KEY = 'proflow_data';
+    const SEED = {
+      users: [
+        { id: 'u1', memberId: 'ADMIN-001', name: 'Master Admin', role: 'admin', avatar: 'MA' },
+        { id: 'u2', memberId: 'TF-002', name: 'Rahul Sharma', role: 'member', avatar: 'RS' },
+        { id: 'u3', memberId: 'TF-003', name: 'Priya Patel', role: 'member', avatar: 'PP' }
+      ],
+      projects: [],
+      tasks: [],
+      session: null
+    };
+
+    async function loadData() {
+      try {
+        const res = await fetch('/api/data');
+        const data = await res.json();
+        // If server returns empty data, use SEED
+        if (!data.users || data.users.length === 0) {
+          const s = JSON.parse(JSON.stringify(SEED));
+          // Check localstorage for session persistence
+          const local = localStorage.getItem(STORAGE_KEY);
+          if (local) {
+            const lp = JSON.parse(local);
+            s.session = lp.session;
+          }
+          return s;
+        }
+        // Restore session from localStorage
+        const local = localStorage.getItem(STORAGE_KEY);
+        if (local) data.session = JSON.parse(local).session;
+        return data;
+      } catch (e) {
+        console.warn('Backend unavailable, using localStorage fallback');
+        const r = localStorage.getItem(STORAGE_KEY);
+        if (r) return JSON.parse(r);
+        return JSON.parse(JSON.stringify(SEED));
+      }
+    }
+
+    async function saveData(d) {
+      // Save entire state locally as a secondary fail-safe
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
+      // Save everything to database
+      try {
+        await fetch('/api/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(d)
+        });
+      } catch (e) { console.error('Failed to sync with backend'); }
+    }
+    window.PF = { loadData, saveData };
+  </script>
+  <script type="text/babel">
+    function PriorityBadge({ priority }) { const m = { high: 'bg-red-900/50 text-red-400 border-red-800/50', medium: 'bg-amber-900/50 text-amber-400 border-amber-800/50', low: 'bg-green-900/50 text-green-400 border-green-800/50' }; return <span className={`text-xs px-2.5 py-1 rounded-full border font-medium capitalize ${m[priority] || m.low}`}>{priority}</span>; }
+    function StatusBadge({ status }) { const m = { 'todo': 'bg-surface-800 text-surface-300', 'in-progress': 'bg-amber-900/50 text-amber-400', 'done': 'bg-green-900/50 text-green-400' }; const l = { 'todo': 'To Do', 'in-progress': 'In Progress', 'done': 'Done' }; return <span className={`text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap ${m[status] || m.todo}`}>{l[status] || status}</span>; }
+    function Modal({ title, onClose, children }) { return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}><div className="glass rounded-2xl p-6 w-full max-w-md slide-up" onClick={e => e.stopPropagation()}><div className="flex items-center justify-between mb-5"><h3 className="font-semibold text-lg">{title}</h3><button onClick={onClose} className="text-surface-400 hover:text-white text-2xl leading-none">×</button></div>{children}</div></div>; }
+    function FInput({ label, ...p }) { return <div>{label && <label className="text-xs font-medium text-surface-300 uppercase tracking-wider block mb-1.5">{label}</label>}<input className="w-full bg-surface-900 border border-surface-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 transition-colors placeholder-surface-600" {...p} /></div>; }
+    function FTextarea({ label, ...p }) { return <div>{label && <label className="text-xs font-medium text-surface-300 uppercase tracking-wider block mb-1.5">{label}</label>}<textarea className="w-full bg-surface-900 border border-surface-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 transition-colors placeholder-surface-600 resize-none" rows={3} {...p} /></div>; }
+    function FSelect({ label, options, ...p }) { return <div>{label && <label className="text-xs font-medium text-surface-300 uppercase tracking-wider block mb-1.5">{label}</label>}<select className="w-full bg-surface-900 border border-surface-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 transition-colors" {...p}>{options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select></div>; }
+    function Btn({ children, variant = 'primary', className = '', ...p }) { const s = { primary: 'bg-brand-600 hover:bg-brand-500 text-white', secondary: 'bg-surface-800 hover:bg-surface-700 text-surface-200', danger: 'bg-red-700 hover:bg-red-600 text-white' }; return <button className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${s[variant]} ${className}`} {...p}>{children}</button>; }
+
+    function LoginScreen({ onLogin, data }) {
+      const [loginName, setLoginName] = React.useState('');
+      const [loginId, setLoginId] = React.useState('');
+      const [role, setRole] = React.useState('member');
+      const [error, setError] = React.useState('');
+      const [mode, setMode] = React.useState('login'); // 'login' or 'signup'
+      const [signupData, setSignupData] = React.useState({ name: '', id: '' });
+
+      function handleSignup(e) {
+        e.preventDefault();
+        const { name, id, photo } = signupData;
+        if (!name.trim() || !id.trim()) { setError('Both name and ID are required.'); return; }
+        if (data.users.find(u => u.memberId?.toUpperCase() === id.trim().toUpperCase())) { setError('This ID is already taken. Try another.'); return; }
+        const newUser = { id: 'u' + Date.now(), memberId: id.trim().toUpperCase(), name: name.trim(), role: role, avatar: photo || name.trim().split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) };
+        const updatedData = { ...data, users: [...data.users, newUser], session: newUser };
+        window.PF.saveData(updatedData); onLogin(newUser, updatedData);
+      }
+      function handleFileChange(e, isSignup = true) {
+        const file = e.target.files[0];
+        if (file) {
+          if (file.size > 500000) { alert('Image too large. Under 500KB please.'); return; }
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            if (isSignup) setSignupData(p => ({ ...p, photo: reader.result }));
+            else setForm(f => ({ ...f, photo: reader.result }));
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+
+      function handleSubmit(e) {
+        e.preventDefault();
+        if (!loginName.trim() || !loginId.trim()) { setError('Please fill in both Name and ID.'); return; }
+        const inputName = loginName.trim().toLowerCase();
+        const inputId = loginId.trim().toUpperCase();
+
+        // Strict Login: Name AND Member ID must match
+        let userMatch = data.users.find(u =>
+          u.name.toLowerCase() === inputName &&
+          u.memberId?.toUpperCase() === inputId &&
+          u.role === role
+        );
+
+        if (!userMatch) { setError('Invalid Name or ID for the ' + role + ' role.'); return; }
+        const updatedData = { ...data, session: userMatch };
+        window.PF.saveData(updatedData);
+        onLogin(userMatch, updatedData);
+      }
+      return (
+        <div className="relative min-h-screen flex items-center justify-center p-6 overflow-hidden bg-black">
+          <div className="absolute inset-0 z-0">
+            <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-50" poster="https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=2070"><source src="https://player.vimeo.com/external/403788285.sd.mp4?s=3386008638f29792e62444391646700c25a77259&profile_id=164&oauth2_token_id=57447761" type="video/mp4" /></video>
+            <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black opacity-80"></div>
+          </div>
+          <div className="relative z-10 w-full max-w-[440px] animate-scale-in">
+            <div className="text-center mb-12">
+              <div className="w-20 h-20 rounded-[2rem] bg-gradient-to-br from-brand-600 to-brand-400 flex items-center justify-center mx-auto mb-6 shadow-[0_0_50px_-10px_rgba(37,99,235,0.6)] transform -rotate-12 ring-2 ring-white/10">
+                <span className="text-4xl font-black text-white">T</span>
+              </div>
+              <h1 className="text-5xl font-black tracking-tighter text-white mb-2 royal-glow">TASKFLOW</h1>
+              <p className="text-brand-400 font-bold uppercase tracking-[0.4em] text-[10px] opacity-80">Royal Management Suite</p>
+            </div>
+            <div className="glass-card rounded-[2.5rem] p-10 border-white/10 shadow-2xl relative overflow-hidden backdrop-blur-xl">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-brand-500 to-transparent opacity-50"></div>
+              <div className="flex bg-black/40 p-1.5 rounded-2xl mb-8 border border-white/5">
+                {['admin', 'member'].map(r => (
+                  <button key={r} type="button" onClick={() => { setRole(r); setError(''); }} className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${role === r ? 'bg-brand-600 text-white shadow-lg' : 'text-surface-500 hover:text-white'}`}>{r}</button>
+                ))}
+              </div>
+              {mode === 'login' ? (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-[10px] font-bold text-brand-400 uppercase tracking-widest block mb-2 ml-1">Full Name</label>
+                      <input value={loginName} onChange={e => { setLoginName(e.target.value); setError(''); }} placeholder="Enter name..." className="w-full bg-black/60 border border-white/10 rounded-xl px-5 py-4 text-sm text-white font-medium focus:outline-none focus:border-brand-500 focus:bg-black/80 transition-all placeholder-surface-600" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-brand-400 uppercase tracking-widest block mb-2 ml-1">Unique ID</label>
+                      <input value={loginId} onChange={e => { setLoginId(e.target.value); setError(''); }} placeholder="Enter ID..." className="w-full bg-black/60 border border-white/10 rounded-xl px-5 py-4 text-sm text-white font-medium focus:outline-none focus:border-brand-500 focus:bg-black/80 transition-all placeholder-surface-600" />
+                    </div>
+                  </div>
+                  {error && <p className="text-red-400 text-xs font-medium text-center">{error}</p>}
+                  <button type="submit" className="w-full py-4 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-400 text-white font-black uppercase tracking-widest hover:from-brand-500 hover:to-brand-300 transition-all shadow-[0_10px_30px_-10px_rgba(37,99,235,0.5)] transform active:scale-[0.98]">Enter TaskFlow →</button>
+                  <button type="button" onClick={() => { setMode('signup'); setError(''); }} className="w-full text-[10px] font-bold text-surface-500 hover:text-brand-400 transition-colors uppercase tracking-[0.2em]">Create New ID</button>
+                </form>
+              ) : (
+                <form onSubmit={handleSignup} className="space-y-5">
+                  <FInput label="Full Name" value={signupData.name} onChange={e => setSignupData(p => ({ ...p, name: e.target.value }))} placeholder="Your name..." />
+                  <FInput label="Create Your Unique ID" value={signupData.id} onChange={e => setSignupData(p => ({ ...p, id: e.target.value }))} placeholder="e.g. MY-ADMIN-ID" />
+                  <div>
+                    <label className="text-[10px] font-bold text-brand-400 uppercase tracking-widest block mb-2 ml-1">Profile Photo (Optional)</label>
+                    <input type="file" accept="image/*" onChange={handleFileChange} className="w-full text-[10px] text-surface-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-brand-600 file:text-black file:font-bold hover:file:bg-brand-500" />
+                  </div>
+                  {error && <p className="text-red-400 text-xs font-medium text-center">{error}</p>}
+                  <Btn className="w-full py-4 rounded-2xl bg-brand-600 text-black font-black uppercase tracking-widest">Create {role} Account</Btn>
+                  <button type="button" onClick={() => { setMode('login'); setError(''); }} className="w-full text-[10px] font-bold text-surface-500 hover:text-brand-400 transition-colors uppercase tracking-[0.2em]">Back to Login</button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+  </script>
+  <script type="text/babel">
+    function Sidebar({ user, page, setPage, onLogout, onEditProfile }) {
+      const [mob, setMob] = React.useState(false);
+      const nav = [
+        { id: 'dashboard', label: 'Overview', icon: '📊' },
+        { id: 'projects', label: 'Projects', icon: '📂' },
+        { id: 'members', label: 'Team', icon: '👥', adminOnly: true }
+      ].filter(i => !i.adminOnly || user.role === 'admin');
+      return (
+        <>
+          <div className="lg:hidden fixed top-0 left-0 right-0 h-14 glass z-50 flex items-center px-4 justify-between">
+            <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center font-bold">T</div><span className="font-bold">TaskFlow</span></div>
+            <button onClick={() => setMob(true)} className="p-2 text-surface-400">☰</button>
+          </div>
+          {mob && <div className="lg:hidden fixed inset-0 z-40 bg-black/80 backdrop-blur-sm" onClick={() => setMob(false)} />}
+          <aside className={`fixed top-0 left-0 h-full w-64 bg-black/40 backdrop-blur-3xl border-r border-brand-500/20 z-50 flex flex-col transition-transform duration-300 ${mob ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+            <div className="p-8">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center font-black text-black shadow-[0_0_30px_-5px_rgba(217,119,6,0.8)] transform -rotate-6">T</div>
+                <span className="text-2xl font-black tracking-tighter text-white royal-glow">TASKFLOW</span>
+              </div>
+            </div>
+            <nav className="flex-1 px-4 space-y-2 mt-4">
+              {nav.map(item => {
+                const active = page === item.id || (page === 'tasks-inp' && item.id === 'tasks');
+                return (
+                  <button key={item.id} onClick={() => { setPage(item.id); setMob(false); }} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${active ? 'bg-brand-600/20 text-brand-300 shadow-[inset_0_0_20px_rgba(217,119,6,0.1)] border border-brand-500/30' : 'text-surface-500 hover:text-white hover:bg-white/5'}`}>
+                    <span className={`text-lg ${active ? 'text-brand-400' : ''}`}>{item.icon}</span>
+                    <span className="uppercase tracking-widest text-[10px]">{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+            <div className="p-4 mt-auto">
+              <div className="glass-card rounded-[2rem] p-5 border-brand-500/10 bg-black/40">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-brand-600 ring-2 ring-brand-500/30 overflow-hidden shadow-lg">
+                    {user.avatar?.startsWith('data:') ? <img src={user.avatar} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-bold text-black">{user.avatar}</div>}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-white truncate uppercase tracking-tighter">{user.name}</p>
+                    <p className="text-[9px] font-bold text-brand-500 uppercase tracking-widest">{user.role}</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <button onClick={onEditProfile} className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[9px] font-black uppercase tracking-widest text-surface-300 transition-all">Edit Profile</button>
+                  <button onClick={onLogout} className="w-full py-2.5 rounded-xl bg-red-950/20 hover:bg-red-900/40 text-[9px] font-black uppercase tracking-widest text-red-500 transition-all">Sign Out</button>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </>
+      );
+    }
+    function AppLayout({ user, page, setPage, onLogout, onEditProfile, searchQuery, setSearchQuery, notifications, children }) {
+      const [showNotif, setShowNotif] = React.useState(false);
+      return (
+        <div className="flex min-h-screen relative overflow-hidden bg-black text-white">
+          {/* THE ROYAL BACKGROUNDS */}
+          <div className="fixed inset-0 z-0 pointer-events-none">
+            <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-40 mix-blend-overlay">
+              <source src="https://player.vimeo.com/external/403788285.sd.mp4?s=3386008638f29792e62444391646700c25a77259&profile_id=164&oauth2_token_id=57447761" type="video/mp4" />
+            </video>
+            <div className="absolute inset-0 bg-gradient-to-b from-[#020617] via-transparent to-[#020617] opacity-80"></div>
+            <div className="absolute inset-0 bg-brand-900/20 mix-blend-color"></div>
+          </div>
+          <div className="royal-bg fixed inset-0 z-[1] pointer-events-none opacity-50"></div>
+
+          <Sidebar user={user} page={page} setPage={setPage} onLogout={onLogout} onEditProfile={onEditProfile} />
+
+          <div className="flex-1 lg:ml-64 flex flex-col min-h-screen relative z-10">
+            <header className="h-20 glass-card border-b border-white/5 px-8 flex items-center justify-between sticky top-0 z-40 backdrop-blur-3xl">
+              <div className="relative w-full max-w-md group">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-surface-500 group-focus-within:text-brand-400 transition-colors">🔍</span>
+                <input
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Global Search (Projects, Tasks, Members)..."
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-brand-500/50 transition-all placeholder-surface-600"
+                />
+              </div>
+
+              <div className="flex items-center gap-6">
+                <div className="relative">
+                  <button onClick={() => setShowNotif(!showNotif)} className="relative p-2 text-surface-400 hover:text-brand-400 transition-all transform hover:scale-110">
+                    <span className="text-xl">🔔</span>
+                    {notifications.length > 0 && <span className="absolute top-1 right-1 w-4 h-4 bg-brand-600 text-[8px] font-black flex items-center justify-center rounded-full border-2 border-black animate-bounce text-black">{notifications.length}</span>}
+                  </button>
+                  {showNotif && (
+                    <div className="absolute right-0 mt-4 w-80 glass-card rounded-[2rem] p-6 border-brand-500/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-scale-in">
+                      <div className="flex items-center justify-between mb-4"><h3 className="font-bold uppercase tracking-widest text-[10px] text-brand-400">Imperial Alerts</h3><span className="text-[9px] text-surface-500">Latest</span></div>
+                      <div className="space-y-4">
+                        {notifications.length === 0 ? <p className="text-xs text-surface-500 text-center py-4">All systems clear. No new alerts.</p> : (
+                          notifications.map((n, i) => <div key={i} className="flex gap-3 items-start border-b border-white/5 pb-3"><div className="w-2 h-2 rounded-full bg-brand-500 mt-1 shadow-[0_0_10px_#f59e0b]"></div><div><p className="text-xs font-bold text-white">{n.msg}</p><p className="text-[10px] text-surface-500 mt-0.5">{n.time}</p></div></div>)
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="h-8 w-[1px] bg-white/10 hidden md:block"></div>
+                <div className="hidden md:flex items-center gap-3">
+                  <p className="text-right"><span className="block text-xs font-black text-white uppercase tracking-tight">{user.name}</span><span className="block text-[9px] font-bold text-brand-500 uppercase tracking-widest">{user.role}</span></p>
+                </div>
+              </div>
+            </header>
+
+            <main className="flex-1 p-8 max-w-7xl mx-auto w-full fade-in">
+              {children}
+            </main>
+          </div>
+        </div>
+      );
+    }
+  </script>
+  <script type="text/babel">
+    function StatCard({ icon, label, value, sub, color, onClick }) {
+      return (
+        <div onClick={onClick} className={`glass-card rounded-2xl p-6 ${onClick ? 'cursor-pointer hover:border-brand-500/50' : ''}`}>
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl mb-4 shadow-inner ${color}`}>{icon}</div>
+          <p className="text-sm font-medium text-surface-400 mb-1">{label}</p>
+          <div className="flex items-end gap-2">
+            <h3 className="text-3xl font-black text-white tracking-tighter">{value}</h3>
+            {sub && <span className="text-[10px] font-bold text-surface-500 mb-1.5 uppercase tracking-widest">{sub}</span>}
+          </div>
+        </div>
+      );
+    }
+    function MiniBar({ label, value, max, color }) {
+      const p = max ? Math.round(value / max * 100) : 0;
+      return (
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs font-medium"><span className="text-surface-400 uppercase tracking-wider">{label}</span><span className="text-surface-300">{value}</span></div>
+          <div className="h-1.5 bg-surface-900 rounded-full overflow-hidden"><div className={`h-full rounded-full progress-bar ${color}`} style={{ width: p + '%' }} /></div>
+        </div>
+      );
+    }
+    function AdminDashboard({ data, setPage }) {
+      const { projects, tasks, users, session } = data;
+      const user = session;
+      const active = projects.filter(p => p.status === 'active').length;
+      const members = users.filter(u => u.role === 'member');
+      const todo = tasks.filter(t => t.status === 'todo').length;
+      const inp = tasks.filter(t => t.status === 'in-progress').length;
+      const done = tasks.filter(t => t.status === 'done').length;
+
+      const IcoP = <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>;
+      const IcoT = <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>;
+      const IcoI = <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>;
+      const IcoM = <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
+
+      return (<div className="space-y-8">
+        <div className="glass-card rounded-[2rem] p-8 flex items-center gap-6 bg-gradient-to-br from-brand-600/10 to-brand-400/5 border-brand-500/20">
+          <div className="w-24 h-24 rounded-full bg-brand-600 flex items-center justify-center text-3xl font-bold overflow-hidden ring-4 ring-brand-500/30 shadow-[0_0_50px_-10px_rgba(217,119,6,0.6)]">
+            {user.avatar?.startsWith('data:') ? <img src={user.avatar} className="w-full h-full object-cover" /> : user.avatar}
+          </div>
+          <div>
+            <div className="flex items-center gap-3 mb-2"><h1 className="text-5xl font-black tracking-tighter text-white royal-glow">Welcome, </h1><span className="text-5xl font-black tracking-tighter royal-badge px-6 py-2 rounded-[2rem] shadow-[0_0_40px_-10px_rgba(217,119,6,0.5)]">{user.name.split(' ')[0]}! 👑</span></div>
+            <p className="text-surface-400 font-bold uppercase tracking-[0.3em] text-[10px] ml-1 opacity-60">Imperial Access • {user.memberId}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatCard icon={IcoP} label="Total Projects" value={projects.length} sub={`${active} active`} color="bg-gradient-to-br from-amber-400 to-amber-700 text-black shadow-[0_0_15px_rgba(217,119,6,0.4)]" onClick={() => setPage('projects')} />
+          <StatCard icon={IcoT} label="Total Tasks" value={tasks.length} sub={`${done} completed`} color="bg-gradient-to-br from-amber-400 to-amber-700 text-black shadow-[0_0_15px_rgba(217,119,6,0.4)]" onClick={() => setPage('tasks')} />
+          <StatCard icon={IcoI} label="In Progress" value={inp} color="bg-gradient-to-br from-amber-400 to-amber-700 text-black shadow-[0_0_15px_rgba(217,119,6,0.4)]" onClick={() => setPage('tasks-inp')} />
+          <StatCard icon={IcoM} label="Members" value={members.length} color="bg-gradient-to-br from-amber-400 to-amber-700 text-black shadow-[0_0_15px_rgba(217,119,6,0.4)]" onClick={() => setPage('members')} />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="glass rounded-2xl p-6"><h2 className="font-semibold mb-5 text-brand-400 uppercase tracking-widest text-xs">Tasks by Status</h2><div className="space-y-4"><MiniBar label="To Do" value={todo} max={tasks.length} color="bg-surface-400" /><MiniBar label="In Progress" value={inp} max={tasks.length} color="bg-amber-500" /><MiniBar label="Done" value={done} max={tasks.length} color="bg-green-500" /></div></div>
+          <div className="glass rounded-2xl p-6"><h2 className="font-semibold mb-5 text-brand-400 uppercase tracking-widest text-xs">Project Progress</h2><div className="space-y-4">{projects.map(p => { const pt = tasks.filter(t => t.projectId === p.id); const pd = pt.filter(t => t.status === 'done').length; const pc = pt.length ? Math.round(pd / pt.length * 100) : 0; return (<div key={p.id}><div className="flex justify-between text-sm mb-1.5"><span className="font-medium truncate">{p.name}</span><span className="text-surface-400 shrink-0 ml-2">{pc}%</span></div><div className="h-2 bg-surface-800 rounded-full overflow-hidden"><div className="h-full rounded-full progress-bar bg-gradient-to-r from-brand-600 to-brand-400" style={{ width: pc + '%' }} /></div></div>); })}</div></div>
+          <div className="glass rounded-2xl p-6 lg:col-span-2"><h2 className="font-semibold mb-5 text-brand-400 uppercase tracking-widest text-xs">Team Overview</h2><div className="grid grid-cols-2 md:grid-cols-4 gap-3">{members.map(m => { const mt = tasks.filter(t => t.assignedTo === m.id); const md = mt.filter(t => t.status === 'done').length; return (<div key={m.id} onClick={() => setPage('tasks-member:' + m.id)} className="bg-surface-900/50 hover:bg-brand-600/10 border border-white/5 hover:border-brand-500/30 rounded-xl p-4 text-center cursor-pointer transition-all group"><div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center font-bold mx-auto mb-3 text-black group-hover:scale-110 transition-transform shadow-lg">{m.avatar?.length > 2 ? <img src={m.avatar} className="w-full h-full object-cover rounded-full" /> : m.avatar}</div><p className="text-sm font-bold text-white truncate">{m.name}</p><p className="text-[10px] font-bold text-surface-500 uppercase tracking-widest mt-1">{mt.length} tasks · {md} done</p></div>); })}</div></div>
+        </div>
+      </div>);
+    }
+    function MemberDashboard({ data, user }) {
+      const my = data.tasks.filter(t => String(t.assignedTo) === String(user.id));
+      const done = my.filter(t => t.status === 'done');
+      const pending = my.filter(t => t.status !== 'done');
+      const myProjects = data.projects.filter(p => p.members.includes(user.id));
+
+      const IcoT = <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>;
+      const IcoI = <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>;
+      const IcoC = <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>;
+
+      return (<div className="space-y-8">
+        <div className="glass-card rounded-[2rem] p-8 flex items-center gap-6 bg-gradient-to-br from-brand-600/10 to-brand-400/5 border-brand-500/20">
+          <div className="w-24 h-24 rounded-full bg-brand-600 flex items-center justify-center text-3xl font-bold overflow-hidden ring-4 ring-brand-500/30 shadow-[0_0_50px_-10px_rgba(217,119,6,0.6)]">
+            {user.avatar?.startsWith('data:') ? <img src={user.avatar} className="w-full h-full object-cover" /> : user.avatar}
+          </div>
+          <div>
+            <div className="flex items-center gap-3 mb-2"><h1 className="text-5xl font-black tracking-tighter text-white royal-glow">Hello, </h1><span className="text-5xl font-black tracking-tighter royal-badge px-6 py-2 rounded-[2rem] shadow-[0_0_40px_-10px_rgba(217,119,6,0.5)]">{user.name.split(' ')[0]}! 👋</span></div>
+            <p className="text-surface-400 font-bold uppercase tracking-[0.3em] text-[10px] ml-1 opacity-60">Personal Portal • {user.memberId}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StatCard icon={IcoT} label="Total Tasks" value={my.length} color="bg-gradient-to-br from-amber-400 to-amber-700 text-black shadow-[0_0_15px_rgba(217,119,6,0.4)]" />
+          <StatCard icon={IcoI} label="In Progress" value={pending.length} color="bg-gradient-to-br from-amber-400 to-amber-700 text-black shadow-[0_0_15px_rgba(217,119,6,0.4)]" />
+          <StatCard icon={IcoC} label="Completed" value={done.length} color="bg-gradient-to-br from-amber-400 to-amber-700 text-black shadow-[0_0_15px_rgba(217,119,6,0.4)]" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+          <div className="glass-card rounded-[2rem] p-8 border-white/5 bg-black/40">
+            <h2 className="text-xl font-bold mb-6 flex items-center gap-3"><span className="w-8 h-8 rounded-lg bg-brand-600/20 text-brand-400 flex items-center justify-center text-sm">📂</span>My Active Projects</h2>
+            {myProjects.length === 0 ? (<div className="text-center py-12"><p className="text-surface-500 font-medium italic">No projects assigned yet.</p></div>) : (
+              <div className="space-y-4">{myProjects.map(p => {
+                const pTasks = my.filter(t => t.projectId === p.id); return (
+                  <div key={p.id} className="p-5 bg-white/5 rounded-2xl border border-white/5 hover:border-brand-500/40 transition-all group">
+                    <div className="flex justify-between items-start mb-3"><p className="font-black text-white group-hover:text-brand-400 transition-colors uppercase tracking-tight">{p.name}</p><StatusBadge status={p.status} /></div>
+                    <div className="flex items-center gap-2"><div className="h-1.5 flex-1 bg-surface-900 rounded-full overflow-hidden"><div className="h-full bg-brand-500 rounded-full" style={{ width: '40%' }}></div></div><span className="text-[10px] font-bold text-brand-500 uppercase tracking-widest">{pTasks.length} Tasks</span></div>
+                  </div>);
+              })}</div>
+            )}
+          </div>
+          <div className="glass-card rounded-[2rem] p-8 border-white/5 bg-black/40">
+            <h2 className="text-xl font-bold mb-6 flex items-center gap-3"><span className="w-8 h-8 rounded-lg bg-amber-600/20 text-amber-400 flex items-center justify-center text-sm">🎯</span>Recent Assignments</h2>
+            {my.length === 0 ? (<div className="text-center py-12"><p className="text-surface-500 font-medium italic">No tasks assigned yet.</p></div>) : (
+              <div className="space-y-4">{my.slice(0, 5).map(t => {
+                const proj = data.projects.find(p => p.id === t.projectId); return (
+                  <div key={t.id} className="flex items-center gap-4 p-5 bg-white/5 rounded-2xl border border-white/5 hover:border-brand-500/40 transition-all group">
+                    <PriorityBadge priority={t.priority} />
+                    <div className="flex-1 min-w-0"><p className="font-bold text-white truncate">{t.title}</p><p className="text-[10px] text-brand-500 font-black uppercase tracking-widest mt-1">{proj?.name}</p></div>
+                    <StatusBadge status={t.status} />
+                  </div>);
+              })}</div>
+            )}
+          </div>
+        </div>
+      </div>);
+    }
+    function Dashboard({ data, user, setPage }) { return user.role === 'admin' ? <AdminDashboard data={data} setPage={setPage} /> : <MemberDashboard data={data} user={user} />; }
+  </script>
+  <script type="text/babel">
+    function ProjectFormModal({ project, members, onSave, onClose }) {
+      const [f, setF] = React.useState({ name: project?.name || '', description: project?.description || '', objectives: project?.objectives || '', status: project?.status || 'active', members: project?.members || [] });
+      const set = (k, v) => setF(p => ({ ...p, [k]: v }));
+      const tog = id => set('members', f.members.includes(id) ? f.members.filter(m => m !== id) : [...f.members, id]);
+      return (<Modal title={project ? 'Edit Project' : 'New Project'} onClose={onClose}><div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+        <FInput label="Project Name" value={f.name} onChange={e => set('name', e.target.value)} placeholder="Project name..." />
+        <FTextarea label="Description" value={f.description} onChange={e => set('description', e.target.value)} placeholder="What is this project about?" />
+        <FTextarea label="Project Objectives / To-Do" value={f.objectives} onChange={e => set('objectives', e.target.value)} placeholder="Main goals of this project..." />
+        <FSelect label="Status" value={f.status} onChange={e => set('status', e.target.value)} options={[{ value: 'active', label: 'Active' }, { value: 'archived', label: 'Archived' }]} />
+        <div><label className="text-xs font-medium text-surface-300 uppercase tracking-wider block mb-2">Assign Members</label><div className="flex flex-wrap gap-2">{members.map(m => <button key={m.id} type="button" onClick={() => tog(m.id)} className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all border ${f.members.includes(m.id) ? 'bg-brand-600/30 text-brand-300 border-brand-600/50' : 'bg-surface-800 text-surface-400 border-surface-700 hover:border-surface-500'}`}>{m.name} <span className="opacity-50 ml-1">({m.memberId})</span></button>)}</div></div>
+        <div className="flex gap-3 pt-2"><Btn variant="secondary" onClick={onClose} className="flex-1">Cancel</Btn><Btn onClick={() => f.name.trim() && onSave(f)} className="flex-1">{project ? 'Save' : 'Create'}</Btn></div>
+      </div></Modal>);
+    }
+    function TaskFormModal({ task, members, onSave, onClose }) {
+      const [f, setF] = React.useState({ title: task?.title || '', description: task?.description || '', assignedTo: task?.assignedTo || (members[0]?.id || ''), priority: task?.priority || 'medium', status: task?.status || 'todo' });
+      const set = (k, v) => setF(p => ({ ...p, [k]: v }));
+      return (<Modal title={task ? 'Edit Task' : 'New Task'} onClose={onClose}><div className="space-y-4">
+        <FInput label="Task Title" value={f.title} onChange={e => set('title', e.target.value)} placeholder="Task title..." />
+        <FTextarea label="Description" value={f.description} onChange={e => set('description', e.target.value)} placeholder="Task details..." />
+        <FSelect label="Assigned To" value={f.assignedTo} onChange={e => set('assignedTo', e.target.value)} options={members.map(m => ({ value: m.id, label: m.name }))} />
+        <div className="grid grid-cols-2 gap-3"><FSelect label="Priority" value={f.priority} onChange={e => set('priority', e.target.value)} options={[{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]} /><FSelect label="Status" value={f.status} onChange={e => set('status', e.target.value)} options={[{ value: 'todo', label: 'To Do' }, { value: 'in-progress', label: 'In Progress' }, { value: 'done', label: 'Done' }]} /></div>
+        <div className="flex gap-3 pt-2"><Btn variant="secondary" onClick={onClose} className="flex-1">Cancel</Btn><Btn onClick={() => f.title.trim() && onSave(f)} className="flex-1">{task ? 'Save' : 'Create Task'}</Btn></div>
+        <p className="text-[10px] text-center text-surface-500 mt-2 italic">Note: To add a new team member, go to the 'Members' section in the sidebar.</p>
+      </div></Modal>);
+    }
+    function TaskDetailModal({ task, data, user, onUpdateStatus, onAddComment, onClose }) {
+      const [comment, setComment] = React.useState('');
+      const assignee = data.users.find(u => u.id === task.assignedTo);
+      const isAdmin = user.role === 'admin';
+      const canUpdate = isAdmin || task.assignedTo === user.id;
+      const nextS = { 'todo': 'in-progress', 'in-progress': 'done' };
+      const nextL = { 'todo': '▶ Start Task', 'in-progress': '✓ Mark Done' };
+      return (<Modal title="Task Details" onClose={onClose}><div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+        <div><div className="flex gap-2 flex-wrap mb-2"><PriorityBadge priority={task.priority} /><StatusBadge status={task.status} /></div><h3 className="text-lg font-semibold">{task.title}</h3><p className="text-sm text-surface-400 mt-1">{task.description || 'No description.'}</p></div>
+        <div className="flex items-center gap-2 text-sm"><div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-xs font-bold">{assignee?.avatar}</div><span className="text-surface-300">{assignee?.name}</span></div>
+        {canUpdate && nextS[task.status] && <Btn onClick={() => onUpdateStatus(nextS[task.status])} className="w-full">{nextL[task.status]}</Btn>}
+        <div><p className="text-xs font-medium text-surface-300 uppercase tracking-wider mb-3">Comments ({(task.comments || []).length})</p>
+          {(task.comments || []).length === 0 && <p className="text-sm text-surface-600 text-center py-4">No comments yet.</p>}
+          <div className="space-y-3 mb-4">{(task.comments || []).map(c => { const cu = data.users.find(u => u.id === c.userId); return (<div key={c.id} className="flex gap-3"><div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{cu?.avatar}</div><div className="flex-1 bg-surface-900 rounded-xl p-3"><p className="text-xs font-medium text-brand-300 mb-1">{cu?.name}</p><p className="text-sm text-surface-300">{c.text}</p></div></div>); })}</div>
+          <div className="flex gap-2"><input value={comment} onChange={e => setComment(e.target.value)} placeholder="Add a comment..." className="flex-1 bg-surface-900 border border-surface-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-500 transition-colors" onKeyDown={e => { if (e.key === 'Enter' && comment.trim()) { onAddComment(comment.trim()); setComment(''); } }} /><Btn onClick={() => { if (comment.trim()) { onAddComment(comment.trim()); setComment(''); } }}>Post</Btn></div>
+        </div>
+      </div></Modal>);
+    }
+    function ProjectDetail({ project, data, user, onBack, onDataChange }) {
+      const isAdmin = user.role === 'admin';
+      const allT = data.tasks.filter(t => String(t.projectId) === String(project.id));
+      const myT = isAdmin ? allT : allT.filter(t => String(t.assignedTo) === String(user.id));
+      const done = allT.filter(t => t.status === 'done').length;
+      const pct = allT.length ? Math.round(done / allT.length * 100) : 0;
+      const projMem = data.users.filter(u => project.members.includes(u.id));
+      const [showTF, setShowTF] = React.useState(false);
+      const [editT, setEditT] = React.useState(null);
+      const [viewT, setViewT] = React.useState(null);
+      const [filter, setFilter] = React.useState('all');
+      function createT(f) { const t = { id: 't' + Date.now(), projectId: project.id, createdAt: new Date().toISOString().split('T')[0], comments: [], ...f }; const d = { ...data, tasks: [...data.tasks, t] }; window.PF.saveData(d); onDataChange(d); setShowTF(false); }
+      function saveT(f) { const d = { ...data, tasks: data.tasks.map(t => t.id === editT.id ? { ...t, ...f } : t) }; window.PF.saveData(d); onDataChange(d); setEditT(null); }
+      function delT(id) { if (!confirm('Delete task?')) return; const d = { ...data, tasks: data.tasks.filter(t => t.id !== id) }; window.PF.saveData(d); onDataChange(d); }
+      function updS(tid, s) { const d = { ...data, tasks: data.tasks.map(t => t.id === tid ? { ...t, status: s } : t) }; window.PF.saveData(d); onDataChange(d); if (viewT) setViewT(d.tasks.find(t => t.id === tid)); }
+      function addC(tid, text) { const c = { id: 'c' + Date.now(), userId: user.id, text, createdAt: new Date().toISOString() }; const d = { ...data, tasks: data.tasks.map(t => t.id === tid ? { ...t, comments: [...(t.comments || []), c] } : t) }; window.PF.saveData(d); onDataChange(d); if (viewT) setViewT(d.tasks.find(t => t.id === tid)); }
+      const filtered = myT.filter(t => filter === 'all' || t.status === filter);
+      const memList = projMem.length ? projMem : data.users.filter(u => u.role === 'member');
+      return (<div className="space-y-6">
+        <div className="flex items-start gap-4">
+          <button onClick={onBack} className="mt-1 text-surface-400 hover:text-white transition-colors text-xl">←</button>
+          <div className="flex-1 min-w-0"><div className="flex items-center gap-2 flex-wrap"><h1 className="text-2xl font-bold">{project.name}</h1><span className={`text-xs px-2.5 py-1 rounded-full ${project.status === 'active' ? 'bg-green-900/50 text-green-400' : 'bg-surface-800 text-surface-400'}`}>{project.status}</span></div><p className="text-surface-400 text-sm mt-1">{project.description}</p></div>
+          {isAdmin && <Btn onClick={() => setShowTF(true)}>+ New Task</Btn>}
+        </div>
+        <div className="glass-card rounded-2xl p-5"><div className="flex justify-between items-center mb-2"><span className="text-sm font-medium">Overall Progress</span><span className="text-sm font-bold text-brand-300">{pct}%</span></div><div className="h-3 bg-surface-800 rounded-full overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-brand-600 to-brand-400 progress-bar" style={{ width: pct + '%' }} /></div></div>
+        <div className="grid gap-3">{filtered.map(task => {
+          const assignee = data.users.find(u => u.id === task.assignedTo); return (
+            <div key={task.id} className="glass-card rounded-2xl p-5 hover:border-brand-700/30 transition-all cursor-pointer group" onClick={() => setViewT(task)}>
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2"><PriorityBadge priority={task.priority} /><StatusBadge status={task.status} /></div>
+                  <p className="font-bold text-white mb-1">{task.title}</p>
+                  <div className="flex items-center gap-2 mt-3"><div className="w-6 h-6 rounded-full bg-brand-600 flex items-center justify-center text-[10px] font-bold">{assignee?.avatar}</div><span className="text-xs text-surface-400">{assignee?.name}</span></div>
+                </div>
+              </div>
+            </div>);
+        })}</div>
+        {showTF && <TaskFormModal members={memList} onSave={createT} onClose={() => setShowTF(false)} />}
+        {editT && <TaskFormModal task={editT} members={memList} onSave={saveT} onClose={() => setEditT(null)} />}
+        {viewT && <TaskDetailModal task={viewT} data={data} user={user} onUpdateStatus={s => updS(viewT.id, s)} onAddComment={t => addC(viewT.id, t)} onClose={() => setViewT(null)} />}
+      </div>);
+    }
+    function Projects({ data, user, onDataChange, setPage }) {
+      const isAdmin = user.role === 'admin';
+      const [search, setSearch] = React.useState('');
+      const [sf, setSf] = React.useState('all');
+      const [showF, setShowF] = React.useState(false);
+      const [editP, setEditP] = React.useState(null);
+      const [active, setActive] = React.useState(null);
+      if (active) { const proj = data.projects.find(p => p.id === active); if (proj) return <ProjectDetail project={proj} data={data} user={user} onBack={() => setActive(null)} onDataChange={onDataChange} />; }
+      const members = data.users.filter(u => u.role === 'member');
+      const filtered = data.projects.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+        const matchesStatus = sf === 'all' || p.status === sf;
+        const isParticipant = isAdmin || (p.members && p.members.includes(user.id));
+        return matchesSearch && matchesStatus && isParticipant;
+      });
+      function createP(f) { const p = { id: 'p' + Date.now(), createdAt: new Date().toISOString().split('T')[0], ...f }; const d = { ...data, projects: [...data.projects, p] }; window.PF.saveData(d); onDataChange(d); setShowF(false); }
+      function saveP(f) { const d = { ...data, projects: data.projects.map(p => p.id === editP.id ? { ...p, ...f } : p) }; window.PF.saveData(d); onDataChange(d); setEditP(null); }
+      function delP(id) { if (!confirm('Delete project and all its tasks?')) return; const d = { ...data, projects: data.projects.filter(p => p.id !== id), tasks: data.tasks.filter(t => t.projectId !== id) }; window.PF.saveData(d); onDataChange(d); }
+      return (<div className="space-y-6">
+        <div className="flex items-center justify-between gap-4 flex-wrap"><div><h1 className="text-2xl font-bold">Projects</h1><p className="text-surface-400 text-sm mt-1">{data.projects.length} projects total</p></div>{isAdmin && <Btn onClick={() => setShowF(true)}>+ New Project</Btn>}</div>
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">{filtered.map(project => { const pt = data.tasks.filter(t => t.projectId === project.id); const pd = pt.filter(t => t.status === 'done').length; const pc = pt.length ? Math.round(pd / pt.length * 100) : 0; const pm = data.users.filter(u => project.members.includes(u.id)); return (<div key={project.id} className="glass rounded-2xl p-5 hover:border-brand-700/40 transition-all cursor-pointer group hover:-translate-y-0.5" onClick={() => setActive(project.id)}><div className="flex items-start justify-between mb-3"><div className="flex-1 min-w-0"><div className="flex items-center gap-2 mb-1 flex-wrap"><h3 className="font-semibold truncate">{project.name}</h3><span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${project.status === 'active' ? 'bg-green-900/50 text-green-400' : 'bg-surface-800 text-surface-500'}`}>{project.status}</span></div></div></div><div className="mb-4"><div className="flex justify-between text-xs text-surface-400 mb-1.5"><span>{pt.length} tasks</span><span>{pc}%</span></div><div className="h-1.5 bg-surface-800 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-brand-600 to-brand-400 rounded-full progress-bar" style={{ width: pc + '%' }} /></div></div><div className="flex items-center justify-between"><div className="flex -space-x-2">{pm.slice(0, 4).map(m => <div key={m.id} className="w-7 h-7 rounded-full bg-brand-600 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold">{m.avatar}</div>)}</div><span className="text-xs text-surface-500">{project.createdAt}</span></div></div>); })}</div>
+        {showF && <ProjectFormModal members={members} onSave={createP} onClose={() => setShowF(false)} />}
+        {editP && <ProjectFormModal project={editP} members={members} onSave={saveP} onClose={() => setEditP(null)} />}
+      </div>);
+    }
+    function TasksView({ data, filter = 'all', setPage }) {
+      const isMemberFilter = filter.startsWith('tasks-member:');
+      const memberId = isMemberFilter ? filter.split(':')[1] : null;
+      const targetMember = memberId ? data.users.find(u => u.id === memberId) : null;
+      const [f, setF] = React.useState(filter === 'tasks-inp' ? 'in-progress' : 'all');
+      const filtered = data.tasks.filter(t => {
+        const matchesStatus = f === 'all' || t.status === f;
+        const matchesMember = !memberId || t.assignedTo === memberId;
+        return matchesStatus && matchesMember;
+      });
+      return (<div className="space-y-6">
+        <h1 className="text-2xl font-bold">{targetMember ? `${targetMember.name}'s Tasks` : 'Task Center'}</h1>
+        <div className="flex gap-2 flex-wrap">{[['all', 'All Tasks'], ['todo', 'To Do'], ['in-progress', 'In Progress'], ['done', 'Completed']].map(([v, l]) => <button key={v} onClick={() => setF(v)} className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${f === v ? 'bg-brand-600 text-white' : 'bg-surface-900 text-surface-400 hover:text-white border border-surface-800'}`}>{l}</button>)}</div>
+        <div className="grid gap-3">{filtered.map(t => { const p = data.projects.find(x => x.id === t.projectId); const u = data.users.find(x => x.id === t.assignedTo); return (<div key={t.id} className="glass-card rounded-2xl p-5 flex items-center gap-4"><PriorityBadge priority={t.priority} /><div className="flex-1 min-w-0"><p className="font-bold text-white truncate">{t.title}</p><div className="flex items-center gap-2 text-[10px] text-surface-500 font-bold uppercase tracking-wider mt-1"><span>{p?.name}</span> • <span>{u?.name}</span></div></div><StatusBadge status={t.status} /></div>); })}</div>
+      </div>);
+    }
+    function Members({ data, user, onDataChange, setPage }) {
+      const members = data.users.filter(u => u.role === 'member');
+      const [showF, setShowF] = React.useState(false);
+      const [form, setForm] = React.useState({ name: '', role: 'member', customId: '' });
+      const [err, setErr] = React.useState('');
+      function addMember() {
+        if (!form.name.trim()) { setErr('Name is required'); return; }
+        const nextId = form.customId.trim().toUpperCase() || ('TF-' + (data.users.length + 100));
+        const u = { id: 'u' + Date.now(), memberId: nextId, name: form.name.trim(), role: form.role, avatar: form.name.trim()[0].toUpperCase() };
+        const d = { ...data, users: [...data.users, u] };
+        window.PF.saveData(d); onDataChange(d); setShowF(false); setForm({ name: '', role: 'member', customId: '' });
+      }
+      return (<div className="space-y-6">
+        <div className="flex items-center justify-between gap-4 flex-wrap"><div><h1 className="text-2xl font-bold">Team Members</h1><p className="text-surface-400 text-sm mt-1">{members.length} members on your team</p></div><button onClick={() => setShowF(s => !s)} className="px-4 py-2 rounded-xl text-sm font-medium bg-brand-600 hover:bg-brand-500 text-white transition-all">+ Add Member</button></div>
+        {showF && (<div className="glass-card rounded-2xl p-6 border-brand-500/20"><h3 className="font-bold mb-4 uppercase tracking-widest text-xs text-brand-400">New Member Registration</h3><div className="flex gap-4 flex-wrap"><div className="flex-1 min-w-[200px]"><FInput label="Full Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div><div className="w-40"><FInput label="Custom ID (Optional)" value={form.customId} onChange={e => setForm({ ...form, customId: e.target.value })} /></div><div className="flex items-end"><Btn onClick={addMember}>Register Member</Btn></div></div></div>)}
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">{members.map(m => <div key={m.id} className="glass-card rounded-2xl p-6 text-center group hover:border-brand-500/40 transition-all"><div className="w-16 h-16 rounded-full bg-brand-600 mx-auto mb-4 flex items-center justify-center font-black text-xl shadow-lg">{m.avatar}</div><p className="font-black text-white">{m.name}</p><p className="text-[10px] font-bold text-brand-500 uppercase tracking-widest mt-1">{m.memberId}</p></div>)}</div>
+      </div>);
+    }
+    function ProfileModal({ user, onSave, onClose }) {
+      const [f, setF] = React.useState({ name: user.name });
+      return (<Modal title="Edit Profile" onClose={onClose}><FInput label="Name" value={f.name} onChange={e => setF({ ...f, name: e.target.value })} /><Btn onClick={() => onSave(f)}>Save</Btn></Modal>);
+    }
+    function App() {
+      const [data, setData] = React.useState(null);
+      const [loading, setLoading] = React.useState(true);
+      const [user, setUser] = React.useState(null);
+      const [page, setPage] = React.useState('dashboard');
+      const [editProfile, setEditProfile] = React.useState(false);
+      const [searchQuery, setSearchQuery] = React.useState('');
+      const [notifications, setNotifications] = React.useState([
+        { msg: 'Imperial System Online', time: 'Just now' },
+        { msg: 'Welcome to the new TaskFlow', time: '1 min ago' }
+      ]);
+
+      React.useEffect(() => {
+        const triggerFallback = () => {
+          console.warn('Backend sync failed/timed out, falling back to local mode');
+          const localRaw = localStorage.getItem(STORAGE_KEY);
+          let localData = localRaw ? JSON.parse(localRaw) : JSON.parse(JSON.stringify(SEED));
+          // Ensure structure is correct
+          if (!localData.users) localData = JSON.parse(JSON.stringify(SEED));
+          setData(localData);
+          setUser(localData.session);
+          setLoading(false);
+        };
+
+        // Fallback timer
+        const timer = setTimeout(() => {
+          if (loading) triggerFallback();
+        }, 5000);
+
+        window.PF.loadData().then(d => {
+          clearTimeout(timer);
+          setData(d);
+          setUser(d.session);
+          setLoading(false);
+        }).catch(err => {
+          console.error('Data Load Error:', err);
+          clearTimeout(timer);
+          triggerFallback();
+        });
+      }, []);
+
+      const handleLogin = (u, d) => {
+        const updatedData = { ...d, session: u };
+        window.PF.saveData(updatedData);
+        setUser(u);
+        setData(updatedData);
+        setPage('dashboard');
+      };
+      const handleLogout = () => {
+        const d = { ...data, session: null };
+        window.PF.saveData(d);
+        setData(d);
+        setUser(null);
+      };
+      const handleDataChange = (newData) => {
+        window.PF.saveData(newData);
+        setData(newData);
+      };
+      const saveProfile = (updated) => {
+        const d = { ...data, users: data.users.map(u => u.id === user.id ? { ...u, ...updated } : u), session: { ...user, ...updated } };
+        window.PF.saveData(d);
+        setData(d);
+        setUser(d.session);
+        setEditProfile(false);
+      };
+
+      if (loading) return (
+        <div className="min-h-screen flex items-center justify-center bg-surface-950">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-6 shadow-[0_0_30px_rgba(37,99,235,0.4)]"></div>
+            <p className="text-brand-400 font-black uppercase tracking-[0.3em] animate-pulse">Syncing with Empire Database...</p>
+          </div>
+        </div>
+      );
+
+      if (!user) return <LoginScreen onLogin={handleLogin} data={data} />;
+
+      const isAdmin = user.role === 'admin';
+      let content = null;
+
+      // Global Search Filtering
+      let displayData = data;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        displayData = {
+          ...data,
+          projects: data.projects.filter(p => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)),
+          tasks: data.tasks.filter(t => t.title.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q)),
+          users: data.users.filter(u => u.name.toLowerCase().includes(q) || u.memberId?.toLowerCase().includes(q))
+        };
+      }
+
+      if (page === 'dashboard') content = <Dashboard data={displayData} user={user} setPage={setPage} />;
+      else if (page === 'projects') content = <Projects data={displayData} user={user} onDataChange={handleDataChange} setPage={setPage} />;
+      else if (page === 'members' && isAdmin) content = <Members data={displayData} user={user} onDataChange={handleDataChange} setPage={setPage} />;
+      else if (page === 'tasks' || page === 'tasks-inp' || page.startsWith('tasks-member:')) content = <TasksView data={displayData} filter={page} setPage={setPage} />;
+      else content = <Dashboard data={displayData} user={user} setPage={setPage} />;
+
+      return (
+        <AppLayout
+          user={user}
+          page={page}
+          setPage={setPage}
+          onLogout={handleLogout}
+          onEditProfile={() => setEditProfile(true)}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          notifications={notifications}
+        >
+          {content}
+          {editProfile && <ProfileModal user={user} onSave={saveProfile} onClose={() => setEditProfile(false)} />}
+        </AppLayout>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+
+</html>
